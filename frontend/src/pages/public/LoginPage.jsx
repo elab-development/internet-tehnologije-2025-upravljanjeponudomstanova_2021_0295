@@ -23,13 +23,14 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      // backend sada vraća: { token, user: { id, email, role } }
+      // backend: { token, user: { id, email, role } }
       const data = await api.post("/auth/login", { email, password });
 
       if (!data?.token || !data?.user?.role) {
         throw new Error("Login odgovor nema token/user.role");
       }
 
+      // VAŽNO: tvoj setAuth očekuje (token, user)
       setAuth(data.token, data.user);
 
       const redirectTo = location.state?.from || "/app";
@@ -42,39 +43,62 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{ maxWidth: 420 }}>
-      <h2>Login</h2>
-
-      {error ? (
-        <div style={{ marginBottom: 12, color: "crimson" }}>{error}</div>
-      ) : null}
-
-      <form onSubmit={onSubmit}>
-        <div style={{ marginBottom: 10 }}>
-          <label>Email</label>
-          <input
-            style={{ width: "100%" }}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-          />
+    <div className="container" style={{ paddingTop: 40 }}>
+      <div style={{ maxWidth: 480, margin: "0 auto" }}>
+        <div className="page-head">
+          <div>
+            <h2 className="page-title">Login</h2>
+            <p className="page-sub">Prijava na interni deo aplikacije.</p>
+          </div>
         </div>
 
-        <div style={{ marginBottom: 10 }}>
-          <label>Password</label>
-          <input
-            style={{ width: "100%" }}
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="current-password"
-          />
-        </div>
+        <div className="card">
+          {error ? (
+            <div className="error" style={{ marginBottom: 10 }}>
+              {error}
+            </div>
+          ) : null}
 
-        <button type="submit" disabled={loading}>
-          {loading ? "Prijavljivanje..." : "Prijavi se"}
-        </button>
-      </form>
+          <form onSubmit={onSubmit}>
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ display: "block", marginBottom: 6, fontWeight: 600 }}>
+                Email
+              </label>
+              <input
+                className="input"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                placeholder="npr. admin@test.com"
+                disabled={loading}
+              />
+            </div>
+
+            <div style={{ marginBottom: 10 }}>
+              <label style={{ display: "block", marginBottom: 6, fontWeight: 600 }}>
+                Password
+              </label>
+              <input
+                className="input"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="current-password"
+                placeholder="••••••••"
+                disabled={loading}
+              />
+            </div>
+
+            <button className="btn btn-primary" type="submit" disabled={loading}>
+              {loading ? "Prijavljivanje..." : "Prijavi se"}
+            </button>
+          </form>
+
+          <div className="muted" style={{ marginTop: 10, fontSize: 13 }}>
+            Posle prijave pristup je ograničen po ulozi (admin/owner/staff).
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

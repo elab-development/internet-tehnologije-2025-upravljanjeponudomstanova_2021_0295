@@ -1,43 +1,23 @@
-export default function DataTable({ columns, rows, actions }) {
+import React from "react";
+
+export default function DataTable({ columns = [], rows = [], actions = [] }) {
+  const hasActions = Array.isArray(actions) && actions.length > 0;
+
   return (
     <table className="table">
       <thead>
         <tr>
           {columns.map((c) => (
-            <th
-              key={c.key}
-              style={{
-                textAlign: "left",
-                borderBottom: "1px solid #ddd",
-                padding: 8,
-              }}
-            >
-              {c.header}
-            </th>
+            <th key={c.key}>{c.header}</th>
           ))}
-          {actions && actions.length > 0 ? (
-            <th
-              style={{
-                textAlign: "left",
-                borderBottom: "1px solid #ddd",
-                padding: 8,
-                width: 1,
-                whiteSpace: "nowrap",
-              }}
-            >
-              Akcije
-            </th>
-          ) : null}
+          {hasActions ? <th>Akcije</th> : null}
         </tr>
       </thead>
 
       <tbody>
         {rows.length === 0 ? (
           <tr>
-            <td
-              colSpan={columns.length + (actions?.length ? 1 : 0)}
-              style={{ padding: 12 }}
-            >
+            <td colSpan={columns.length + (hasActions ? 1 : 0)}>
               Nema podataka.
             </td>
           </tr>
@@ -45,31 +25,25 @@ export default function DataTable({ columns, rows, actions }) {
           rows.map((r) => (
             <tr key={r.id ?? JSON.stringify(r)}>
               {columns.map((c) => (
-                <td
-                  key={c.key}
-                  style={{ borderBottom: "1px solid #f0f0f0", padding: 8 }}
-                >
-                  {c.render ? c.render(r) : String(r[c.key] ?? "")}
+                <td key={c.key}>
+                  {c.render ? c.render(r) : String(r?.[c.key] ?? "")}
                 </td>
               ))}
-              {actions && actions.length > 0 ? (
-                <td
-                  style={{
-                    borderBottom: "1px solid #f0f0f0",
-                    padding: 8,
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {actions.map((a) => (
-                    <button
-                      key={a.label}
-                      onClick={() => a.onClick(r)}
-                      style={{ marginRight: 8 }}
-                      type="button"
-                    >
-                      {a.label}
-                    </button>
-                  ))}
+
+              {hasActions ? (
+                <td>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {actions.map((a) => (
+                      <button
+                        key={a.label}
+                        type="button"
+                        className={`btn ${a.variant === "primary" ? "btn-primary" : ""}`}
+                        onClick={() => a.onClick(r)}
+                      >
+                        {a.label}
+                      </button>
+                    ))}
+                  </div>
                 </td>
               ) : null}
             </tr>

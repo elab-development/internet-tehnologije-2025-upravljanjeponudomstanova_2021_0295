@@ -68,7 +68,7 @@ function App() {
           }
         />
 
-        {
+        
         <Route
           path="reservations"
           element={
@@ -77,7 +77,6 @@ function App() {
             </ProtectedRoute>
           }
         />
-        }
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -2,6 +2,14 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { api } from "../../api/apiClient";
 
+function badgeClassForStatus(status) {
+  const s = String(status || "").toLowerCase();
+  if (s.includes("available") || s.includes("slob") || s.includes("free")) return "badge badge--ok";
+  if (s.includes("reserved") || s.includes("rez")) return "badge badge--warn";
+  if (s.includes("sold") || s.includes("prod")) return "badge badge--bad";
+  return "badge";
+}
+
 export default function ApartmentsPage() {
   const { id } = useParams(); // buildingId
   const [apartments, setApartments] = useState([]);
@@ -30,35 +38,59 @@ export default function ApartmentsPage() {
   }, [apartments, minRooms]);
 
   if (loading) return <div>Učitavanje...</div>;
-  if (error) return <div style={{ color: "crimson" }}>{error}</div>;
+  if (error) return <div className="error">{error}</div>;
 
   return (
     <div>
-      <h2>Stanovi</h2>
+      <div className="page-head">
+        <div>
+          <h2 className="page-title">Stanovi</h2>
+          <p className="page-sub">Filtriraj po broju soba i otvori detalje stana.</p>
+        </div>
 
-      <div style={{ marginBottom: 12 }}>
-        <label>Min soba: </label>
-        <input
-          value={minRooms}
-          onChange={(e) => setMinRooms(e.target.value)}
-          style={{ width: 80, marginLeft: 8 }}
-        />
+        <div style={{ width: 220 }}>
+          <label className="muted" style={{ display: "block", marginBottom: 6, fontSize: 13 }}>
+            Min soba
+          </label>
+          <input
+            className="input"
+            value={minRooms}
+            onChange={(e) => setMinRooms(e.target.value)}
+            placeholder="npr. 2"
+          />
+        </div>
       </div>
 
       {filtered.length === 0 ? (
-        <div>Nema stanova.</div>
+        <div className="card">Nema stanova.</div>
       ) : (
-        <ul>
+        <div className="grid grid-2">
           {filtered.map((a) => (
-            <li key={a.id} style={{ marginBottom: 8 }}>
-              <div>
-                <b>Stan #{a.number ?? a.id}</b> — {a.rooms} soba
-                {a.price ? ` — ${a.price}` : ""}
+            <div className="card" key={a.id}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                <div>
+                  <div style={{ fontWeight: 800, marginBottom: 4 }}>
+                    Stan #{a.number ?? a.id}
+                  </div>
+                  <div className="muted">
+                    {a.rooms} soba{Number(a.rooms) === 1 ? "" : ""} • Sprat: {a.floor ?? "-"} • {a.area ? `${a.area} m²` : "Površina: -"}
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+                    <span className={badgeClassForStatus(a.status)}>{a.status || "N/A"}</span>
+                    <span className="badge">{a.price != null ? `${a.price} €` : "Cena: -"}</span>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-end" }}>
+                  <Link className="link" to={`/apartments/${a.id}`}>
+                    Detalj →
+                  </Link>
+                </div>
               </div>
-              <Link to={`/apartments/${a.id}`}>Detalj</Link>
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );

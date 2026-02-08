@@ -1,126 +1,90 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../api/apiClient";
-import { getRole } from "../../auth/authService";
 import DataTable from "../../components/DataTable";
 import EntityForm from "../../components/EntityForm";
+import { getRole } from "../../auth/authService";
+
+function badgeClassForStatus(status) {
+  const s = String(status || "").toLowerCase();
+  if (s.includes("available") || s.includes("slob") || s.includes("free")) return "badge badge--ok";
+  if (s.includes("reserved") || s.includes("rez")) return "badge badge--warn";
+  if (s.includes("sold") || s.includes("prod")) return "badge badge--bad";
+  return "badge";
+}
 
 export default function ApartmentsAppPage() {
-  const role = getRole();
-
-  const isAdmin = role === "admin";
-  const isOwner = role === "owner";
-
-  const baseListEndpoint = isAdmin
-    ? "/admin/apartments"
-    : isOwner
-    ? "/owner/apartments"
-    : null;
+  const role = getRole(); // "admin" | "owner" | ...
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const [mode, setMode] = useState("list"); // list | create | edit
+  const [mode, setMode] = useState("list"); // "list" | "create" | "edit"
   const [selected, setSelected] = useState(null);
 
-  function resetForm() {
+  const listEndpoint = useMemo(() => {
+    if (role === "admin") return "/admin/apartments";
+    if (role === "owner") return "/owner/apartments";
+    return "/owner/apartments";
+  }, [role]);
+
+  const resetForm = useCallback(() => {
     setSelected(null);
     setMode("list");
-  }
+  }, []);
 
-  async function load() {
-    if (!baseListEndpoint) {
-      setError("Nedozvoljen pristup.");
-      setLoading(false);
-      return;
-    }
-
+  const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const data = await api.get(baseListEndpoint);
+      const data = await api.get(listEndpoint);
       setRows(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err?.message || "Greška pri učitavanju stanova");
     } finally {
       setLoading(false);
     }
-  }
+  }, [listEndpoint]);
 
   useEffect(() => {
     load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [baseListEndpoint]);
+  }, [load]);
 
-  // kolone - prikazujemo minimalno, a render tolerantno (ako polje ne postoji)
   const columns = useMemo(
     () => [
       { key: "id", header: "ID" },
-      { key: "number", header: "Broj" },
-      { key: "rooms", header: "Sobe" },
-      { key: "floor", header: "Sprat" },
-      { key: "price", header: "Cena" },
-      { key: "status", header: "Status" },
       { key: "buildingId", header: "ZgradaID" },
-    ],
-    []
-  );
-
-  const fieldsAdmin = useMemo(
-    () => [
-      { name: "buildingId", label: "ZgradaID", type: "number", required: true },
-      { name: "number", label: "Broj", type: "text", required: true },
-      { name: "rooms", label: "Sobe", type: "number", required: true },
-      { name: "floor", label: "Sprat", type: "number" },
-      { name: "price", label: "Cena", type: "number" },
+      { key: "number", header: "Broj" },
+      { key: "floor", header: "Sprat" },
+      { key: "rooms", header: "Sobe" },
+      { key: "area", header: "m²" },
       {
-        name: "status",
-        label: "Status",
-        type: "select",
-        options: [
-          { value: "available", label: "available" },
-          { value: "reserved", label: "reserved" },
-          { value: "sold", label: "sold" },
-        ],
+        key: "status",
+        header: "Status",
+        render: (r) => <span className={badgeClassForStatus(r.status)}>{r.status || "N/A"}</span>,
       },
-      { name: "ownerId", label: "OwnerID", type: "number" },
-    ],
-    []
-  );
-
-  const fieldsOwner = useMemo(
-    () => [
-      { name: "number", label: "Broj", type: "text" },
-      { name: "price", label: "Cena", type: "number" },
       {
-        name: "status",
-        label: "Status",
-        type: "select",
-        options: [
-          { value: "available", label: "available" },
-          { value: "reserved", label: "reserved" },
-          { value: "sold", label: "sold" },
-        ],
+        key: "price",
+        header: "Cena",
+        render: (r) => <span className="badge">{r.price != null ? `${r.price} €` : "—"}</span>,
       },
     ],
     []
   );
 
   const actions = useMemo(() => {
-    const list = [];
-
-    // edit za admin i owner
-    list.push({
-      label: "Izmeni",
-      onClick: (r) => {
-        setSelected(r);
-        setMode("edit");
+    const base = [
+      {
+        label: "Izmeni",
+        onClick: (r) => {
+          setSelected(r);
+          setMode("edit");
+        },
       },
-    });
+    ];
 
-    // delete samo admin
-    if (isAdmin) {
-      list.push({
+    if (role === "admin") {
+      base.push({
         label: "Obriši",
         onClick: async (r) => {
           if (!window.confirm(`Obrisati stan #${r.number ?? r.id}?`)) return;
@@ -134,61 +98,79 @@ export default function ApartmentsAppPage() {
       });
     }
 
-    return list;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin]);
+    return base;
+  }, [role, load]);
 
-  async function create(values) {
-    // admin create
-    await api.post("/admin/apartments", values);
-    await load();
-    resetForm();
-  }
+  const fields = useMemo(
+    () => [
+      { name: "buildingId", label: "Zgrada ID", type: "number" },
+      { name: "number", label: "Broj stana", type: "text" },
+      { name: "floor", label: "Sprat", type: "number" },
+      { name: "rooms", label: "Broj soba", type: "number" },
+      { name: "area", label: "Površina (m²)", type: "number" },
+      { name: "price", label: "Cena (€)", type: "number" },
+      { name: "status", label: "Status", type: "text", placeholder: "available / reserved / sold" },
+    ],
+    []
+  );
 
-  async function update(values) {
-    if (!selected?.id) throw new Error("Nije izabran stan.");
+  const create = useCallback(
+    async (values) => {
+      await api.post("/admin/apartments", values);
+      await load();
+      resetForm();
+    },
+    [load, resetForm]
+  );
 
-    if (isAdmin) {
-      await api.put(`/admin/apartments/${selected.id}`, values);
-    } else if (isOwner) {
-      await api.put(`/owner/apartments/${selected.id}`, values);
-    } else {
-      throw new Error("Nedozvoljeno.");
-    }
+  const update = useCallback(
+    async (values) => {
+      const endpoint =
+        role === "admin"
+          ? `/admin/apartments/${selected.id}`
+          : `/owner/apartments/${selected.id}`;
 
-    await load();
-    resetForm();
-  }
+      await api.put(endpoint, values);
+      await load();
+      resetForm();
+    },
+    [role, selected, load, resetForm]
+  );
 
   if (loading) return <div>Učitavanje...</div>;
-  if (error) return <div style={{ color: "crimson" }}>{error}</div>;
+  if (error) return <div className="error">{error}</div>;
 
   return (
     <div>
-      <h2>Stanovi</h2>
+      <div className="page-head">
+        <div>
+          <h2 className="page-title">Stanovi</h2>
+          <p className="page-sub">
+            {role === "admin" ? "Admin upravljanje stanovima." : "Owner pregled i izmena stanova."}
+          </p>
+        </div>
+
+        {mode === "list" && role === "admin" ? (
+          <button className="btn btn-primary" onClick={() => setMode("create")}>
+            Novi stan
+          </button>
+        ) : null}
+      </div>
 
       {mode === "list" ? (
-        <>
-          {isAdmin ? (
-            <button onClick={() => setMode("create")} style={{ marginBottom: 12 }}>
-              Novi stan
-            </button>
-          ) : null}
-
-          <DataTable columns={columns} rows={rows} actions={actions} />
-        </>
+        <DataTable columns={columns} rows={rows} actions={actions} />
       ) : mode === "create" ? (
         <EntityForm
           title="Novi stan"
-          fields={fieldsAdmin}
+          fields={fields}
           initialValues={{
             buildingId: "",
             number: "",
-            rooms: "",
             floor: "",
+            rooms: "",
+            area: "",
             price: "",
-            status: "",
-            ownerId: "",
+            status: "available",
           }}
           onSubmit={create}
           onCancel={resetForm}
@@ -197,24 +179,16 @@ export default function ApartmentsAppPage() {
       ) : (
         <EntityForm
           title={`Izmena stana #${selected?.id}`}
-          fields={isAdmin ? fieldsAdmin : fieldsOwner}
-          initialValues={
-            isAdmin
-              ? {
-                  buildingId: selected?.buildingId ?? "",
-                  number: selected?.number ?? "",
-                  rooms: selected?.rooms ?? "",
-                  floor: selected?.floor ?? "",
-                  price: selected?.price ?? "",
-                  status: selected?.status ?? "",
-                  ownerId: selected?.ownerId ?? "",
-                }
-              : {
-                  number: selected?.number ?? "",
-                  price: selected?.price ?? "",
-                  status: selected?.status ?? "",
-                }
-          }
+          fields={fields}
+          initialValues={{
+            buildingId: selected?.buildingId ?? "",
+            number: selected?.number ?? "",
+            floor: selected?.floor ?? "",
+            rooms: selected?.rooms ?? "",
+            area: selected?.area ?? "",
+            price: selected?.price ?? "",
+            status: selected?.status ?? "",
+          }}
           onSubmit={update}
           onCancel={resetForm}
           submitLabel="Sačuvaj"

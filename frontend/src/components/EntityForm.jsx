@@ -1,24 +1,20 @@
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
-/**
- * fields: [
- *  { name: "name", label: "Naziv", type: "text", required: true },
- *  { name: "rooms", label: "Sobe", type: "number" },
- *  { name: "status", label: "Status", type: "select", options: [...] }
- * ]
- */
 export default function EntityForm({
   title,
-  fields,
-  initialValues,
+  fields = [],
+  initialValues = {},
+  submitLabel = "Sačuvaj",
   onSubmit,
   onCancel,
-  submitLabel = "Sačuvaj",
 }) {
-  const init = useMemo(() => initialValues || {}, [initialValues]);
-  const [values, setValues] = useState(init);
-  const [error, setError] = useState("");
+  const [values, setValues] = useState(initialValues || {});
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setValues(initialValues || {});
+  }, [initialValues]);
 
   function setField(name, value) {
     setValues((prev) => ({ ...prev, [name]: value }));
@@ -28,20 +24,9 @@ export default function EntityForm({
     e.preventDefault();
     setError("");
 
-    // minimalna validacija required
-    for (const f of fields) {
-      if (f.required) {
-        const v = values[f.name];
-        if (v === undefined || v === null || String(v).trim() === "") {
-          setError(`Polje "${f.label}" je obavezno.`);
-          return;
-        }
-      }
-    }
-
-    setSaving(true);
     try {
-      await onSubmit(values);
+      setSaving(true);
+      await onSubmit?.(values);
     } catch (err) {
       setError(err?.message || "Greška pri čuvanju");
     } finally {
@@ -50,58 +35,77 @@ export default function EntityForm({
   }
 
   return (
-    <div style={{ border: "1px solid #ddd", borderRadius: 8, padding: 12 }}>
+    <div className="card">
       {title ? <h3 style={{ marginTop: 0 }}>{title}</h3> : null}
 
       {error ? (
-        <div style={{ color: "crimson", marginBottom: 10 }}>{error}</div>
+        <div className="error" style={{ marginBottom: 10 }}>
+          {error}
+        </div>
       ) : null}
 
       <form onSubmit={handleSubmit}>
-        {fields.map((f) => (
-          <div key={f.name} style={{ marginBottom: 10 }}>
-            <label style={{ display: "block", marginBottom: 4 }}>
-              {f.label}
-            </label>
+        {fields.map((f) => {
+          const v = values?.[f.name] ?? "";
 
-            {f.type === "select" ? (
-              <select
-                value={values[f.name] ?? ""}
-                onChange={(e) => setField(f.name, e.target.value)}
-                style={{ width: "100%" }}
-              >
-                <option value="">--</option>
-                {(f.options || []).map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
-                ))}
-              </select>
-            ) : f.type === "textarea" ? (
-              <textarea
-                rows={4}
-                value={values[f.name] ?? ""}
-                onChange={(e) => setField(f.name, e.target.value)}
-                style={{ width: "100%" }}
-              />
-            ) : (
-              <input
-                type={f.type || "text"}
-                value={values[f.name] ?? ""}
-                onChange={(e) => setField(f.name, e.target.value)}
-                style={{ width: "100%" }}
-              />
-            )}
-          </div>
-        ))}
+          return (
+            <div key={f.name} style={{ marginBottom: 10 }}>
+              <label style={{ display: "block", marginBottom: 6, fontWeight: 600 }}>
+                {f.label}
+              </label>
 
-        <div style={{ display: "flex", gap: 8 }}>
-          <button type="submit" disabled={saving}>
+              {f.type === "select" ? (
+                <select
+                  className="select"
+                  value={v}
+                  onChange={(e) => setField(f.name, e.target.value)}
+                  disabled={saving}
+                >
+                  {(f.options || []).map((opt) => (
+                    <option key={String(opt.value)} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              ) : f.type === "textarea" ? (
+                <textarea
+                  className="textarea"
+                  rows={f.rows || 4}
+                  value={v}
+                  onChange={(e) => setField(f.name, e.target.value)}
+                  placeholder={f.placeholder || ""}
+                  disabled={saving}
+                />
+              ) : (
+                <input
+                  className="input"
+                  type={f.type || "text"}
+                  value={v}
+                  onChange={(e) => setField(f.name, e.target.value)}
+                  placeholder={f.placeholder || ""}
+                  disabled={saving}
+                />
+              )}
+            </div>
+          );
+        })}
+
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button
+            type="submit"
+            className="btn btn-primary"
+            disabled={saving}
+          >
             {saving ? "Čuvanje..." : submitLabel}
           </button>
 
           {onCancel ? (
-            <button type="button" onClick={onCancel}>
+            <button
+              type="button"
+              className="btn"
+              onClick={onCancel}
+              disabled={saving}
+            >
               Otkaži
             </button>
           ) : null}

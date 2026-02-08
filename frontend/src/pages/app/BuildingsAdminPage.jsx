@@ -88,20 +88,25 @@ export default function BuildingsAdminPage() {
   }
 
   if (loading) return <div>Učitavanje...</div>;
-  if (error) return <div style={{ color: "crimson" }}>{error}</div>;
+  if (error) return <div className="error">{error}</div>;
 
   return (
     <div>
-      <h2>Zgrade (Admin)</h2>
+      <div className="page-head">
+        <div>
+          <h2 className="page-title">Zgrade (Admin)</h2>
+          <p className="page-sub">CRUD operacije nad zgradama.</p>
+        </div>
 
-      {mode === "list" ? (
-        <>
-          <button onClick={() => setMode("create")} style={{ marginBottom: 12 }}>
+        {mode === "list" ? (
+          <button className="btn btn-primary" onClick={() => setMode("create")}>
             Nova zgrada
           </button>
+        ) : null}
+      </div>
 
-          <DataTable columns={columns} rows={rows} actions={actions} />
-        </>
+      {mode === "list" ? (
+        <DataTable columns={columns} rows={rows} actions={actions} />
       ) : mode === "create" ? (
         <EntityForm
           title="Nova zgrada"

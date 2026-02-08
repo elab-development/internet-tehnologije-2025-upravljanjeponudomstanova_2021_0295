@@ -4,10 +4,13 @@ import { api } from "../../api/apiClient";
 
 export default function BuildingsPage() {
   const [buildings, setBuildings] = useState([]);
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
+    setLoading(true);
+    setError("");
+
     api
       .get("/buildings")
       .then((data) => setBuildings(Array.isArray(data) ? data : []))
@@ -19,25 +22,40 @@ export default function BuildingsPage() {
   }, []);
 
   if (loading) return <div>Učitavanje...</div>;
-  if (error) return <div style={{ color: "crimson" }}>{error}</div>;
+  if (error) return <div className="error">{error}</div>;
 
   return (
     <div>
-      <h2>Zgrade</h2>
+      <div className="page-head">
+        <div>
+          <h2 className="page-title">Zgrade</h2>
+          <p className="page-sub">Izaberi zgradu da vidiš dostupne stanove.</p>
+        </div>
+      </div>
 
       {buildings.length === 0 ? (
-        <div>Nema zgrada.</div>
+        <div className="card">Nema dostupnih zgrada.</div>
       ) : (
-        <ul>
+        <div className="grid grid-2">
           {buildings.map((b) => (
-            <li key={b.id} style={{ marginBottom: 8 }}>
-              <div>
-                <b>{b.name}</b> {b.address ? `— ${b.address}` : ""}
+            <div className="card" key={b.id}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                <div>
+                  <div style={{ fontWeight: 800, marginBottom: 4 }}>
+                    {b.name || `Zgrada #${b.id}`}
+                  </div>
+                  <div className="muted">{b.address || "Adresa: -"}</div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "flex-start" }}>
+                  <Link className="link" to={`/buildings/${b.id}`}>
+                    Stanovi →
+                  </Link>
+                </div>
               </div>
-              <Link to={`/buildings/${b.id}`}>Pogledaj stanove</Link>
-            </li>
+            </div>
           ))}
-        </ul>
+        </div>
       )}
     </div>
   );
