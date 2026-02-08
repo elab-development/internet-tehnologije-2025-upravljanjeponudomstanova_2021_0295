@@ -12,6 +12,7 @@ router.get('/inquiries',auth, requireRole('admin'), asyncHandler(async (req, res
       include: {
         model: Apartment,
         as: 'apartment',
+        required: false,
         attributes: ['id', 'number']
       },
       order: [['createdAt', 'DESC']]
