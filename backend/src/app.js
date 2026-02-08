@@ -6,6 +6,8 @@ const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const publicRoutes = require('./routes/public');
 const errorHandler = require('./middleware/errorHandler');
+const ownerRoutes = require('./routes/owner');
+const staffRoutes = require('./routes/staff');
   
 const app = express();
 
@@ -14,12 +16,15 @@ app.use(express.json());
 app.use('/api', publicRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
-app.use((req, res) => {
-  res.status(404).json({ message: 'Ruta ne postoji' });
-});
+app.use('/api/owner', ownerRoutes);
+app.use('/api/staff', staffRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });
+});
+
+app.use((req, res) => {
+  res.status(404).json({ message: 'Ruta ne postoji' });
 });
 
 app.use(errorHandler);
