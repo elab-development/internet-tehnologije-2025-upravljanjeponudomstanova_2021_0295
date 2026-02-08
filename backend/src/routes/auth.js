@@ -47,6 +47,11 @@ router.post('/register', auth, asyncHandler(async (req, res) => {
     return res.status(400).json({ message: 'Sva polja su obavezna' });
   }
 
+  const allowedRoles = ['admin', 'owner', 'staff'];
+  if (!allowedRoles.includes(role)) {
+    return res.status(400).json({ message: 'Neispravna uloga' });
+  }
+
   const existing = await User.findOne({ where: { email } });
   if (existing) {
     return res.status(400).json({ message: 'Korisnik već postoji' });

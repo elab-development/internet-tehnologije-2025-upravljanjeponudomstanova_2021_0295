@@ -11,13 +11,13 @@ module.exports = {
       },
       apartmentId: {
         type: Sequelize.INTEGER,
-        allowNull: false,
+        allowNull: true,
         references: {
           model: 'Apartments',
           key: 'id'
         },
         onUpdate: 'CASCADE',
-        onDelete: 'CASCADE'
+        onDelete: 'SET NULL'
       },
       name: {
         type: Sequelize.STRING
