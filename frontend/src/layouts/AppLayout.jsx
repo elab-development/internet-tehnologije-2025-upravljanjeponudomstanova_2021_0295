@@ -1,17 +1,6 @@
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { clearAuth, getRole, getUser } from "../auth/authService";
 
-function linkStyle({ isActive }) {
-  return {
-    display: "block",
-    padding: "8px 10px",
-    textDecoration: "none",
-    borderRadius: 6,
-    color: "black",
-    background: isActive ? "#eee" : "transparent",
-  };
-}
-
 export default function AppLayout() {
   const navigate = useNavigate();
   const role = getRole();
@@ -23,57 +12,48 @@ export default function AppLayout() {
   }
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh" }}>
-      <aside style={{ width: 240, borderRight: "1px solid #ddd", padding: 16 }}>
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ fontWeight: 700 }}>Interni deo</div>
-          <div style={{ fontSize: 12, color: "#555" }}>
-            {user?.email || ""} {role ? `(${role})` : ""}
-          </div>
-        </div>
+  <div className="app-shell">
+    <aside className="sidebar">
+      <div className="sidebar-title">Interni deo</div>
+      <div className="sidebar-sub">
+        {user?.email || ""} {role ? `(${role})` : ""}
+      </div>
 
-        <nav style={{ display: "grid", gap: 6 }}>
-          {/* Admin */}
-          {role === "admin" && (
-            <NavLink to="/app/buildings" style={linkStyle}>
-              Zgrade
-            </NavLink>
-          )}
+      <nav className="sidebar-nav">
+        {role === "admin" && (
+          <NavLink to="/app/buildings" className={({isActive}) => `sidebar-link ${isActive ? "active" : ""}`}>
+            Zgrade
+          </NavLink>
+        )}
 
-          {/* Admin + Owner */}
-          {(role === "admin" || role === "owner") && (
-            <NavLink to="/app/apartments" style={linkStyle}>
-              Stanovi
-            </NavLink>
-          )}
+        {(role === "admin" || role === "owner") && (
+          <NavLink to="/app/apartments" className={({isActive}) => `sidebar-link ${isActive ? "active" : ""}`}>
+            Stanovi
+          </NavLink>
+        )}
 
-          {/* Admin + Owner + Staff */}
-          {(role === "admin" || role === "owner" || role === "staff") && (
-            <NavLink to="/app/inquiries" style={linkStyle}>
-              Upiti
-            </NavLink>
-          )}
+        {(role === "admin" || role === "owner" || role === "staff") && (
+          <NavLink to="/app/inquiries" className={({isActive}) => `sidebar-link ${isActive ? "active" : ""}`}>
+            Upiti
+          </NavLink>
+        )}
 
-          <button
-            onClick={logout}
-            style={{
-              marginTop: 12,
-              padding: "8px 10px",
-              borderRadius: 6,
-              border: "1px solid #ddd",
-              background: "white",
-              cursor: "pointer",
-              textAlign: "left",
-            }}
-          >
-            Logout
-          </button>
-        </nav>
-      </aside>
+        {(role === "admin" || role === "owner") && (
+          <NavLink to="/app/reservations" className={({isActive}) => `sidebar-link ${isActive ? "active" : ""}`}>
+            Rezervacije
+          </NavLink>
+        )}
 
-      <main style={{ flex: 1, padding: 16 }}>
-        <Outlet />
-      </main>
-    </div>
-  );
+
+        <button onClick={logout} className="btn" style={{ textAlign: "left", marginTop: 10 }}>
+          Logout
+        </button>
+      </nav>
+    </aside>
+
+    <main className="main">
+      <Outlet />
+    </main>
+  </div>
+);
 }

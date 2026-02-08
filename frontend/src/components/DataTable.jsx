@@ -1,6 +1,6 @@
 export default function DataTable({ columns, rows, actions }) {
   return (
-    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+    <table className="table">
       <thead>
         <tr>
           {columns.map((c) => (

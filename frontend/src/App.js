@@ -16,7 +16,7 @@ import AppHomePage from "./pages/app/AppHomePage";
 import BuildingsAdminPage from "./pages/app/BuildingsAdminPage";
 import ApartmentsAppPage from "./pages/app/ApartmentsAppPage";
 import InquiriesAppPage from "./pages/app/InquiriesAppPage";
-// import ReservationsAppPage from "./pages/app/ReservationsAppPage"; // uključi ako ti treba
+import ReservationsAppPage from "./pages/app/ReservationsAppPage";
 
 function App() {
   return (
@@ -68,7 +68,7 @@ function App() {
           }
         />
 
-        {/*
+        {
         <Route
           path="reservations"
           element={
@@ -77,7 +77,7 @@ function App() {
             </ProtectedRoute>
           }
         />
-        */}
+        }
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
