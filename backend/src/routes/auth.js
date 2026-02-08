@@ -30,7 +30,14 @@ router.post('/login', asyncHandler(async (req, res) => {
     { expiresIn: '1h' }
   );
 
-  res.json({ token });
+  res.json({
+  token,
+  user: {
+    id: user.id,
+    email: user.email,
+    role: user.role
+  }
+});
 }));
 
 router.post('/logout', (req, res) => {
