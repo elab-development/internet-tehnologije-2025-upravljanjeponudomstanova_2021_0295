@@ -13,15 +13,17 @@ router.get(
   asyncHandler(async (req, res) => {
     const inquiries = await Inquiry.findAll({
       include: {
-        model: Apartment,
-        as: 'apartment',
-        attributes: ['id', 'number'],
-        include: {
-          model: Building,
-          as: 'building',
-          attributes: ['id', 'name']
-        }
-      },
+            model: Apartment,
+            as: 'apartment',
+            required: false,
+            attributes: ['id', 'number'],
+            include: {
+                model: Building,
+                as: 'building',
+                required: false,
+                attributes: ['id', 'name']
+            }
+        },
       order: [['createdAt', 'DESC']]
     });
 

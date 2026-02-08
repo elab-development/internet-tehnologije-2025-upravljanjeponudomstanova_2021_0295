@@ -13,15 +13,17 @@ router.get(
   asyncHandler(async (req, res) => {
     const inquiries = await Inquiry.findAll({
       include: {
-        model: Apartment,
-        as: 'apartment',
-        attributes: ['id', 'number'],
-        include: {
-          model: Building,
-          as: 'building',
-          attributes: ['id', 'name']
-        }
-      },
+            model: Apartment,
+            as: 'apartment',
+            required: false,
+            attributes: ['id', 'number'],
+            include: {
+                model: Building,
+                as: 'building',
+                required: false,
+                attributes: ['id', 'name']
+            }
+        },
       order: [['createdAt', 'DESC']]
     });
 
@@ -51,6 +53,56 @@ router.get(
     });
 
     res.json(reservations);
+  })
+);
+
+// Owner: lista stanova
+router.get(
+  '/apartments',
+  auth,
+  requireRole(['owner', 'admin']),
+  asyncHandler(async (req, res) => {
+    const apartments = await Apartment.findAll({
+      include: [
+        {
+          model: Building,
+          as: 'building',
+          attributes: ['id', 'name', 'address']
+        }
+      ],
+      order: [['createdAt', 'DESC']]
+    });
+
+    res.json(apartments);
+  })
+);
+
+// Owner: izmena stana (bez promene buildingId)
+router.put(
+  '/apartments/:id',
+  auth,
+  requireRole(['owner', 'admin']),
+  asyncHandler(async (req, res) => {
+    const { id } = req.params;
+    const { number, price, status } = req.body;
+
+    const apartment = await Apartment.findByPk(id);
+    if (!apartment) {
+      return res.status(404).json({ message: 'Stan ne postoji' });
+    }
+
+    apartment.number = number ?? apartment.number;
+    apartment.price = price ?? apartment.price;
+    if (status != null) {
+        const allowedApartmentStatuses = ['available', 'reserved', 'sold'];
+        if (!allowedApartmentStatuses.includes(status)) {
+            return res.status(400).json({ message: 'Neispravan status stana' });
+        }
+    }
+    apartment.status = status ?? apartment.status;
+
+    await apartment.save();
+    res.json(apartment);
   })
 );
 

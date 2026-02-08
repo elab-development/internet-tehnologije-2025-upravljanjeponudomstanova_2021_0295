@@ -7,13 +7,6 @@ const asyncHandler = require('../middleware/asyncHandler');
 const { Inquiry, Apartment, Building, Reservation } = require('../../models');
 
 
-router.get('/test', auth, (req, res) => {
-  res.json({
-    message: 'Autorizovan pristup',
-    user: req.user
-  });
-});
-
 router.get('/inquiries',auth, requireRole('admin'), asyncHandler(async (req, res) => {
     const inquiries = await Inquiry.findAll({
       include: {
@@ -133,6 +126,11 @@ router.post(
       });
     }
 
+    const allowedApartmentStatuses = ['available', 'reserved', 'sold'];
+    if (!allowedApartmentStatuses.includes(status)) {
+      return res.status(400).json({ message: 'Neispravan status stana' });
+    }
+
     // Provera da li zgrada postoji (FK logika na nivou aplikacije)
     const building = await Building.findByPk(buildingId);
     if (!building) {
@@ -174,6 +172,13 @@ router.put(
 
     apartment.number = number ?? apartment.number;
     apartment.price = price ?? apartment.price;
+
+    if (status != null) {
+      const allowedApartmentStatuses = ['available', 'reserved', 'sold'];
+      if (!allowedApartmentStatuses.includes(status)) {
+        return res.status(400).json({ message: 'Neispravan status stana' });
+      }
+    }
     apartment.status = status ?? apartment.status;
 
     await apartment.save();
@@ -237,10 +242,27 @@ router.post(
         message: 'apartmentId, startDate, endDate i status su obavezni'
       });
     }
+    const allowedReservationStatuses = ['active', 'canceled', 'expired'];
+    if (!allowedReservationStatuses.includes(status)) {
+      return res.status(400).json({ message: 'Neispravan status rezervacije' });
+    }
 
     const apartment = await Apartment.findByPk(apartmentId);
     if (!apartment) {
       return res.status(400).json({ message: 'Stan ne postoji' });
+    }
+
+    // zabrana vise aktivnih rezervacija za isti stan
+    if (status === 'active') {
+      const existingActive = await Reservation.findOne({
+        where: { apartmentId, status: 'active' }
+      });
+
+      if (existingActive) {
+        return res.status(409).json({
+          message: 'Vec postoji aktivna rezervacija za ovaj stan'
+        });
+      }
     }
 
     const reservation = await Reservation.create({
@@ -269,7 +291,30 @@ router.put(
 
     reservation.startDate = startDate ?? reservation.startDate;
     reservation.endDate = endDate ?? reservation.endDate;
+
+    // validacija statusa ako je poslat
+    if (status != null) {
+      const allowedReservationStatuses = ['active', 'canceled', 'expired'];
+      if (!allowedReservationStatuses.includes(status)) {
+        return res.status(400).json({ message: 'Neispravan status rezervacije' });
+      }
+    }
+
+    // zabrana da vise rezervacija za isti stan bude aktivno
+    if (status != null && status === 'active' && reservation.status !== 'active') {
+      const existingActive = await Reservation.findOne({
+        where: { apartmentId: reservation.apartmentId, status: 'active' }
+      });
+
+      if (existingActive) {
+        return res.status(409).json({
+          message: 'Vec postoji aktivna rezervacija za ovaj stan'
+        });
+      }
+    }
+
     reservation.status = status ?? reservation.status;
+
 
     await reservation.save();
 
