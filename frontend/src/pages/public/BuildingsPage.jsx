@@ -50,7 +50,7 @@ export default function BuildingsPage() {
 
                 <div style={{ display: "flex", alignItems: "flex-start" }}>
                   <Link className="link" to={`/buildings/${b.id}`}>
-                    Stanovi →
+                    Detalji →
                   </Link>
                 </div>
               </div>

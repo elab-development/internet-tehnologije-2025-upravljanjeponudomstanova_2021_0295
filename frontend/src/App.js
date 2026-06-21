@@ -6,6 +6,7 @@ import ProtectedRoute from "./auth/ProtectedRoute";
 
 // public pages
 import BuildingsPage from "./pages/public/BuildingsPage";
+import BuildingDetailPage from "./pages/public/BuildingDetailPage";
 import ApartmentsPage from "./pages/public/ApartmentsPage";
 import ApartmentDetailsPage from "./pages/public/ApartmentDetailsPage";
 import LoginPage from "./pages/public/LoginPage";
@@ -25,7 +26,7 @@ function App() {
       {/* PUBLIC */}
       <Route element={<PublicLayout />}>
         <Route path="/" element={<BuildingsPage />} />
-        <Route path="/buildings/:id" element={<ApartmentsPage />} />
+        <Route path="/buildings/:id" element={<BuildingDetailPage />} />
         <Route path="/apartments/:id" element={<ApartmentDetailsPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/contact" element={<ContactPage />} />
