@@ -17,6 +17,7 @@ import BuildingsAdminPage from "./pages/app/BuildingsAdminPage";
 import ApartmentsAppPage from "./pages/app/ApartmentsAppPage";
 import InquiriesAppPage from "./pages/app/InquiriesAppPage";
 import ReservationsAppPage from "./pages/app/ReservationsAppPage";
+import UsersAdminPage from "./pages/app/UsersAdminPage";
 
 function App() {
   return (
@@ -73,6 +74,15 @@ function App() {
           element={
             <ProtectedRoute allowedRoles={["ADMIN", "EMPLOYEE"]}>
               <ReservationsAppPage />
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="users"
+          element={
+            <ProtectedRoute allowedRoles={["ADMIN"]}>
+              <UsersAdminPage />
             </ProtectedRoute>
           }
         />

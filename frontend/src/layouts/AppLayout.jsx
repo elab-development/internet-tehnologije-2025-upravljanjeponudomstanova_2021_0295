@@ -26,6 +26,12 @@ export default function AppLayout() {
           </NavLink>
         )}
 
+        {role === "ADMIN" && (
+          <NavLink to="/app/users" className={({isActive}) => `sidebar-link ${isActive ? "active" : ""}`}>
+            Korisnici
+          </NavLink>
+        )}
+
         {(role === "ADMIN" || role === "EMPLOYEE") && (
           <NavLink to="/app/apartments" className={({isActive}) => `sidebar-link ${isActive ? "active" : ""}`}>
             Stanovi

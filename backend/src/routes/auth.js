@@ -59,7 +59,7 @@ router.post('/register', auth, asyncHandler(async (req, res) => {
     return res.status(403).json({ message: 'Nemate dozvolu' });
   }
 
-  const { email, password, role } = req.body;
+  const { fullName, email, password, role } = req.body;
   if (!email || !password || !role) {
     return res.status(400).json({ message: 'Sva polja su obavezna' });
   }
@@ -76,13 +76,14 @@ router.post('/register', auth, asyncHandler(async (req, res) => {
 
   const hashed = await bcrypt.hash(password, 10);
   const user = await User.create({
+    fullName: fullName ?? null,
     email,
     password: hashed,
     role,
     isActive: true
   });
 
-  res.status(201).json({ id: user.id, email: user.email, role: user.role });
+  res.status(201).json({ id: user.id, fullName: user.fullName, email: user.email, role: user.role });
 }));
 
 module.exports = router;
