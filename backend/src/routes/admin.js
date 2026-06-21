@@ -5,6 +5,7 @@ const auth = require('../middleware/auth');
 const requireRole = require('../middleware/requireRole');
 const asyncHandler = require('../middleware/asyncHandler');
 const { Inquiry, Apartment, Building, Reservation, User } = require('../../models');
+const { createReservation, cancelReservation, completeReservation } = require('../services/reservationService');
 
 // -------------------- INQUIRIES --------------------
 router.get(
@@ -352,98 +353,42 @@ router.post(
       return res.status(400).json({ message: 'apartmentId je obavezan' });
     }
 
-    const apartment = await Apartment.findByPk(apartmentId);
-    if (!apartment) {
-      return res.status(400).json({ message: 'Stan ne postoji' });
+    try {
+      const reservation = await createReservation(apartmentId, req.user.id, {
+        customerName, customerEmail, customerPhone, agreedPrice
+      });
+      res.status(201).json(reservation);
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
     }
-
-    if (agreedPrice !== undefined && agreedPrice !== null) {
-      if (typeof agreedPrice !== 'number' || agreedPrice <= 0) {
-        return res.status(400).json({ message: 'agreedPrice mora biti pozitivan broj' });
-      }
-    }
-
-    const existingActive = await Reservation.findOne({
-      where: { apartmentId, status: 'ACTIVE' }
-    });
-    if (existingActive) {
-      return res.status(409).json({ message: 'Već postoji aktivna rezervacija za ovaj stan' });
-    }
-
-    const reservation = await Reservation.create({
-      apartmentId,
-      createdByUserId: req.user.id,
-      customerName: customerName ?? null,
-      customerEmail: customerEmail ?? null,
-      customerPhone: customerPhone ?? null,
-      agreedPrice: agreedPrice ?? null,
-      status: 'ACTIVE'
-    });
-
-    res.status(201).json(reservation);
   })
 );
 
-router.put(
-  '/reservations/:id',
+router.patch(
+  '/reservations/:id/cancel',
   auth,
   requireRole('ADMIN'),
   asyncHandler(async (req, res) => {
-    const { id } = req.params;
-    const { startDate, endDate, status } = req.body;
-
-    const reservation = await Reservation.findByPk(id);
-    if (!reservation) {
-      return res.status(404).json({ message: 'Rezervacija ne postoji' });
+    try {
+      const reservation = await cancelReservation(req.params.id);
+      res.json(reservation);
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
     }
-
-    // nullable -> menjaj samo ako je poslato
-    if (startDate !== undefined) reservation.startDate = startDate;
-    if (endDate !== undefined) reservation.endDate = endDate;
-
-    if (status !== undefined) {
-      if (status !== null) {
-        const allowedReservationStatuses = ['active', 'canceled', 'expired'];
-        if (!allowedReservationStatuses.includes(status)) {
-          return res.status(400).json({ message: 'Neispravan status rezervacije' });
-        }
-      }
-
-      // zabrana da vise rezervacija za isti stan bude aktivno
-      if (status === 'active' && reservation.status !== 'active') {
-        const existingActive = await Reservation.findOne({
-          where: { apartmentId: reservation.apartmentId, status: 'active' }
-        });
-
-        if (existingActive) {
-          return res.status(409).json({
-            message: 'Vec postoji aktivna rezervacija za ovaj stan'
-          });
-        }
-      }
-
-      reservation.status = status;
-    }
-
-    await reservation.save();
-    res.json(reservation);
   })
 );
 
-router.delete(
-  '/reservations/:id',
+router.patch(
+  '/reservations/:id/complete',
   auth,
   requireRole('ADMIN'),
   asyncHandler(async (req, res) => {
-    const { id } = req.params;
-
-    const reservation = await Reservation.findByPk(id);
-    if (!reservation) {
-      return res.status(404).json({ message: 'Rezervacija ne postoji' });
+    try {
+      const reservation = await completeReservation(req.params.id);
+      res.json(reservation);
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
     }
-
-    await reservation.destroy();
-    res.json({ message: 'Rezervacija uspešno obrisana' });
   })
 );
 

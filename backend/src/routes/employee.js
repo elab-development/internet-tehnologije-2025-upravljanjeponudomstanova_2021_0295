@@ -5,6 +5,7 @@ const auth = require('../middleware/auth');
 const requireRole = require('../middleware/requireRole');
 const asyncHandler = require('../middleware/asyncHandler');
 const { Inquiry, Apartment, Building, Reservation, User } = require('../../models');
+const { createReservation, cancelReservation, completeReservation } = require('../services/reservationService');
 
 // -------------------- INQUIRIES --------------------
 router.get(
@@ -112,6 +113,56 @@ router.get(
     });
 
     res.json(reservations);
+  })
+);
+
+router.post(
+  '/reservations',
+  auth,
+  requireRole(['EMPLOYEE', 'ADMIN']),
+  asyncHandler(async (req, res) => {
+    const { apartmentId, customerName, customerEmail, customerPhone, agreedPrice } = req.body;
+
+    if (!apartmentId) {
+      return res.status(400).json({ message: 'apartmentId je obavezan' });
+    }
+
+    try {
+      const reservation = await createReservation(apartmentId, req.user.id, {
+        customerName, customerEmail, customerPhone, agreedPrice
+      });
+      res.status(201).json(reservation);
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  })
+);
+
+router.patch(
+  '/reservations/:id/cancel',
+  auth,
+  requireRole(['EMPLOYEE', 'ADMIN']),
+  asyncHandler(async (req, res) => {
+    try {
+      const reservation = await cancelReservation(req.params.id);
+      res.json(reservation);
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
+  })
+);
+
+router.patch(
+  '/reservations/:id/complete',
+  auth,
+  requireRole(['EMPLOYEE', 'ADMIN']),
+  asyncHandler(async (req, res) => {
+    try {
+      const reservation = await completeReservation(req.params.id);
+      res.json(reservation);
+    } catch (err) {
+      res.status(err.status || 500).json({ message: err.message });
+    }
   })
 );
 
