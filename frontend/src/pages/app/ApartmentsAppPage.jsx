@@ -62,6 +62,11 @@ export default function ApartmentsAppPage() {
     { value: "SOLD",      label: "Prodat" },
   ], []);
 
+  const pricePublicOptions = useMemo(() => [
+    { value: "false", label: "Ne (cena na upit)" },
+    { value: "true",  label: "Da (prikaži cenu)" },
+  ], []);
+
   const columns = useMemo(
     () => [
       { key: "id", header: "ID" },
@@ -135,13 +140,22 @@ export default function ApartmentsAppPage() {
         type: "select",
         options: statusOptions,
       },
+      {
+        name: "isPricePublic",
+        label: "Prikaži cenu javno",
+        type: "select",
+        options: pricePublicOptions,
+      },
     ],
-    [statusOptions]
+    [statusOptions, pricePublicOptions]
   );
 
   const create = useCallback(
     async (values) => {
-      await api.post("/admin/apartments", values);
+      await api.post("/admin/apartments", {
+        ...values,
+        isPricePublic: values.isPricePublic === "true",
+      });
       await load();
       resetForm();
     },
@@ -154,7 +168,10 @@ export default function ApartmentsAppPage() {
         role === "ADMIN"
           ? `/admin/apartments/${selected.id}`
           : `/employee/apartments/${selected.id}`;
-      await api.put(endpoint, values);
+      await api.put(endpoint, {
+        ...values,
+        isPricePublic: values.isPricePublic === "true",
+      });
       await load();
       resetForm();
     },
@@ -191,13 +208,14 @@ export default function ApartmentsAppPage() {
             title="Novi stan"
             fields={fields}
             initialValues={{
-              buildingId: "",
-              number: "",
-              floor: "",
-              rooms: "",
-              area: "",
-              price: "",
-              status: "AVAILABLE",
+              buildingId:    "",
+              number:        "",
+              floor:         "",
+              rooms:         "",
+              area:          "",
+              price:         "",
+              status:        "AVAILABLE",
+              isPricePublic: "false",
             }}
             onSubmit={create}
             onCancel={resetForm}
@@ -208,13 +226,14 @@ export default function ApartmentsAppPage() {
             title={`Izmena stana #${selected?.id}`}
             fields={fields}
             initialValues={{
-              buildingId: selected?.buildingId ?? "",
-              number:     selected?.number     ?? "",
-              floor:      selected?.floor      ?? "",
-              rooms:      selected?.rooms      ?? "",
-              area:       selected?.area       ?? "",
-              price:      selected?.price      ?? "",
-              status:     selected?.status     ?? "AVAILABLE",
+              buildingId:    selected?.buildingId    ?? "",
+              number:        selected?.number        ?? "",
+              floor:         selected?.floor         ?? "",
+              rooms:         selected?.rooms         ?? "",
+              area:          selected?.area          ?? "",
+              price:         selected?.price         ?? "",
+              status:        selected?.status        ?? "AVAILABLE",
+              isPricePublic: selected?.isPricePublic ? "true" : "false",
             }}
             onSubmit={update}
             onCancel={resetForm}
