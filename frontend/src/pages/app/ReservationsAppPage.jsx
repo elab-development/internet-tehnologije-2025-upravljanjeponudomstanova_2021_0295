@@ -1,205 +1,165 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../api/apiClient";
 import { getRole } from "../../auth/authService";
+import ApiState from "../../components/ApiState";
 import DataTable from "../../components/DataTable";
 import EntityForm from "../../components/EntityForm";
-import ApiState from "../../components/ApiState";
 
-function endpointForRole(role) {
+function baseEndpoint(role) {
   if (role === "ADMIN") return "/admin/reservations";
   if (role === "EMPLOYEE") return "/employee/reservations";
   return null;
 }
 
-function badgeClassForReservationStatus(status) {
-  const s = String(status || "").toLowerCase();
-  if (s.includes("active")) return "badge badge--ok";
-  if (s.includes("expired")) return "badge badge--warn";
-  if (s.includes("canceled")) return "badge badge--bad";
+function statusLabel(status) {
+  if (status === "ACTIVE") return "Aktivna";
+  if (status === "CANCELLED") return "Otkazana";
+  if (status === "COMPLETED") return "Završena";
+  return status || "—";
+}
+
+function statusBadgeClass(status) {
+  if (status === "ACTIVE") return "badge badge--ok";
+  if (status === "CANCELLED") return "badge badge--bad";
+  if (status === "COMPLETED") return "badge badge--warn";
   return "badge";
-}
-
-function normalizeNullableText(v) {
-  const s = String(v ?? "").trim();
-  return s === "" ? null : s;
-}
-
-function formatDateOnly(value) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return String(value);
-  // lokalni format datuma (bez vremena)
-  return d.toLocaleDateString("sr-RS");
 }
 
 export default function ReservationsAppPage() {
   const role = getRole();
-  const listEndpoint = useMemo(() => endpointForRole(role), [role]);
+  const endpoint = useMemo(() => baseEndpoint(role), [role]);
 
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  const [mode, setMode] = useState("list"); // list | create | edit
-  const [selected, setSelected] = useState(null);
-
-  const reset = useCallback(() => {
-    setSelected(null);
-    setMode("list");
-  }, []);
+  const [mode, setMode] = useState("list"); // "list" | "create"
 
   const load = useCallback(async () => {
-    if (!listEndpoint) {
+    if (!endpoint) {
       setError("Nedozvoljen pristup.");
       setLoading(false);
       return;
     }
-
     setLoading(true);
     setError("");
-
     try {
-      const data = await api.get(listEndpoint);
+      const data = await api.get(endpoint);
       setRows(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(err?.message || "Greška pri učitavanju rezervacija");
     } finally {
       setLoading(false);
     }
-  }, [listEndpoint]);
+  }, [endpoint]);
 
   useEffect(() => {
     load();
   }, [load]);
 
+  async function cancel(r) {
+    if (!window.confirm(`Otkazati rezervaciju #${r.id}?`)) return;
+    try {
+      await api.patch(`${endpoint}/${r.id}/cancel`);
+      await load();
+    } catch (err) {
+      alert(err?.message || "Greška pri otkazivanju");
+    }
+  }
+
+  async function complete(r) {
+    if (!window.confirm(`Označiti rezervaciju #${r.id} kao završenu? Stan će biti označen kao PRODAT.`)) return;
+    try {
+      await api.patch(`${endpoint}/${r.id}/complete`);
+      await load();
+    } catch (err) {
+      alert(err?.message || "Greška pri završavanju");
+    }
+  }
+
   const columns = useMemo(
     () => [
       { key: "id", header: "ID" },
       {
-        key: "apartmentInfo",
+        key: "stan",
         header: "Stan",
         render: (r) => {
-          const aptId = r.apartmentId ?? r.apartment?.id ?? "-";
-          const aptNo = r.apartment?.number != null ? `#${r.apartment.number}` : "";
-          const bName = r.apartment?.building?.name ? ` (${r.apartment.building.name})` : "";
-          return `${aptId}${aptNo}${bName}`;
+          const num = r.apartment?.number ? `#${r.apartment.number}` : `ID ${r.apartmentId}`;
+          const bld = r.apartment?.building?.name ? ` (${r.apartment.building.name})` : "";
+          return `${num}${bld}`;
         },
       },
+      { key: "customerName",  header: "Ime klijenta",   render: (r) => r.customerName  || "—" },
+      { key: "customerEmail", header: "Email klijenta",  render: (r) => r.customerEmail || "—" },
+      { key: "customerPhone", header: "Telefon",         render: (r) => r.customerPhone || "—" },
       {
-        key: "startDate",
-        header: "Od",
-        render: (r) => formatDateOnly(r.startDate),
-      },
-      {
-        key: "endDate",
-        header: "Do",
-        render: (r) => formatDateOnly(r.endDate),
+        key: "agreedPrice",
+        header: "Dogovorena cena",
+        render: (r) => (r.agreedPrice != null ? `${r.agreedPrice} €` : "—"),
       },
       {
         key: "status",
         header: "Status",
         render: (r) => (
-          <span className={badgeClassForReservationStatus(r.status)}>{r.status || "N/A"}</span>
+          <span className={statusBadgeClass(r.status)}>{statusLabel(r.status)}</span>
         ),
       },
       {
-        key: "createdAt",
-        header: "Kreirano",
-        render: (r) => formatDateOnly(r.createdAt),
-      },
-    ],
-    []
-  );
-
-  const actions = useMemo(() => {
-    if (role !== "ADMIN") return [];
-
-    return [
-      {
-        label: "Izmeni",
-        onClick: (r) => {
-          setSelected(r);
-          setMode("edit");
-        },
+        key: "createdBy",
+        header: "Kreirao",
+        render: (r) => r.createdBy?.fullName || r.createdBy?.email || "—",
       },
       {
-        label: "Obriši",
-        onClick: async (r) => {
-          if (!window.confirm(`Obrisati rezervaciju #${r.id}?`)) return;
-          try {
-            await api.del(`/admin/reservations/${r.id}`);
-            await load();
-          } catch (err) {
-            alert(err?.message || "Greška pri brisanju rezervacije");
-          }
+        key: "akcije",
+        header: "Akcije",
+        render: (r) => {
+          if (r.status !== "ACTIVE") return null;
+          return (
+            <div style={{ display: "flex", gap: 8 }}>
+              <button className="btn" onClick={() => cancel(r)}>Otkaži</button>
+              <button className="btn" onClick={() => complete(r)}>Završi</button>
+            </div>
+          );
         },
       },
-    ];
-  }, [role, load]);
-
-  const statusOptions = useMemo(
-    () => [
-      { value: "", label: "— (null)" },
-      { value: "active", label: "active" },
-      { value: "canceled", label: "canceled" },
-      { value: "expired", label: "expired" },
     ],
-    []
+    [cancel, complete]
   );
 
   const createFields = useMemo(
     () => [
-      { name: "apartmentId", label: "Stan ID", type: "number" },
-      { name: "startDate", label: "Datum od (YYYY-MM-DD)", type: "text", placeholder: "2026-02-08" },
-      { name: "endDate", label: "Datum do (YYYY-MM-DD)", type: "text", placeholder: "2026-02-10" },
-      { name: "status", label: "Status", type: "select", options: statusOptions },
+      { name: "apartmentId",   label: "Stan ID",            type: "number" },
+      { name: "customerName",  label: "Ime klijenta",       type: "text" },
+      { name: "customerEmail", label: "Email klijenta",     type: "email" },
+      { name: "customerPhone", label: "Telefon klijenta",   type: "text" },
+      { name: "agreedPrice",   label: "Dogovorena cena (€)", type: "number" },
     ],
-    [statusOptions]
-  );
-
-  const editFields = useMemo(
-    () => [
-      { name: "startDate", label: "Datum od (YYYY-MM-DD)", type: "text" },
-      { name: "endDate", label: "Datum do (YYYY-MM-DD)", type: "text" },
-      { name: "status", label: "Status", type: "select", options: statusOptions },
-    ],
-    [statusOptions]
+    []
   );
 
   const create = useCallback(
     async (values) => {
       const apartmentId = Number(values.apartmentId);
       if (!apartmentId || Number.isNaN(apartmentId)) {
-        throw new Error("apartmentId je obavezan i mora biti broj.");
+        throw new Error("Stan ID je obavezan i mora biti broj.");
       }
 
-      await api.post("/admin/reservations", {
+      const agreedPrice = values.agreedPrice !== "" ? Number(values.agreedPrice) : null;
+      if (agreedPrice !== null && (Number.isNaN(agreedPrice) || agreedPrice <= 0)) {
+        throw new Error("Dogovorena cena mora biti pozitivan broj.");
+      }
+
+      await api.post(endpoint, {
         apartmentId,
-        startDate: normalizeNullableText(values.startDate),
-        endDate: normalizeNullableText(values.endDate),
-        status: normalizeNullableText(values.status),
+        customerName:  values.customerName  || null,
+        customerEmail: values.customerEmail || null,
+        customerPhone: values.customerPhone || null,
+        agreedPrice,
       });
 
       await load();
-      reset();
+      setMode("list");
     },
-    [load, reset]
-  );
-
-  const update = useCallback(
-    async (values) => {
-      if (!selected?.id) throw new Error("Nema selektovane rezervacije.");
-
-      await api.put(`/admin/reservations/${selected.id}`, {
-        startDate: normalizeNullableText(values.startDate),
-        endDate: normalizeNullableText(values.endDate),
-        status: normalizeNullableText(values.status),
-      });
-
-      await load();
-      reset();
-    },
-    [selected, load, reset]
+    [endpoint, load]
   );
 
   return (
@@ -207,14 +167,14 @@ export default function ReservationsAppPage() {
       <div className="page-head">
         <div>
           <h2 className="page-title">Rezervacije</h2>
-          <p className="page-sub">Admin: CRUD. Zaposleni: pregled.</p>
+          <p className="page-sub">Pregled i upravljanje rezervacijama.</p>
         </div>
 
-        {role === "ADMIN" && mode === "list" ? (
+        {mode === "list" && endpoint && (
           <button className="btn btn-primary" onClick={() => setMode("create")}>
             Nova rezervacija
           </button>
-        ) : null}
+        )}
       </div>
 
       <ApiState
@@ -224,33 +184,21 @@ export default function ReservationsAppPage() {
         emptyText="Nema rezervacija."
       >
         {mode === "list" ? (
-          <DataTable columns={columns} rows={rows} actions={actions} />
-        ) : mode === "create" ? (
+          <DataTable columns={columns} rows={rows} />
+        ) : (
           <EntityForm
             title="Nova rezervacija"
             fields={createFields}
             initialValues={{
-              apartmentId: "",
-              startDate: "",
-              endDate: "",
-              status: "active",
+              apartmentId:   "",
+              customerName:  "",
+              customerEmail: "",
+              customerPhone: "",
+              agreedPrice:   "",
             }}
             onSubmit={create}
-            onCancel={reset}
+            onCancel={() => setMode("list")}
             submitLabel="Kreiraj"
-          />
-        ) : (
-          <EntityForm
-            title={`Izmena rezervacije #${selected?.id}`}
-            fields={editFields}
-            initialValues={{
-              startDate: selected?.startDate ?? "",
-              endDate: selected?.endDate ?? "",
-              status: selected?.status ?? "",
-            }}
-            onSubmit={update}
-            onCancel={reset}
-            submitLabel="Sačuvaj"
           />
         )}
       </ApiState>
