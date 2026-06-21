@@ -14,13 +14,23 @@ module.exports = (sequelize, DataTypes) => {
         foreignKey: 'apartmentId',
         as: 'apartment'
       });
+
+      Reservation.belongsTo(models.User, {
+        foreignKey: 'createdByUserId',
+        as: 'createdBy'
+      });
     }
   }
   Reservation.init({
     apartmentId: DataTypes.INTEGER,
     startDate: DataTypes.DATE,
     endDate: DataTypes.DATE,
-    status: DataTypes.STRING
+    status: DataTypes.STRING,
+    createdByUserId: DataTypes.INTEGER,
+    customerName: DataTypes.STRING,
+    customerEmail: DataTypes.STRING,
+    customerPhone: DataTypes.STRING,
+    agreedPrice: DataTypes.FLOAT
   }, {
     sequelize,
     modelName: 'Reservation',

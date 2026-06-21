@@ -4,7 +4,7 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const requireRole = require('../middleware/requireRole');
 const asyncHandler = require('../middleware/asyncHandler');
-const { Inquiry, Apartment, Building, Reservation } = require('../../models');
+const { Inquiry, Apartment, Building, Reservation, User } = require('../../models');
 
 // -------------------- INQUIRIES --------------------
 router.get(
@@ -101,6 +101,11 @@ router.get(
             as: 'building',
             attributes: ['id', 'name']
           }
+        },
+        {
+          model: User,
+          as: 'createdBy',
+          attributes: ['id', 'fullName', 'email']
         }
       ],
       order: [['createdAt', 'DESC']]

@@ -4,7 +4,7 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const requireRole = require('../middleware/requireRole');
 const asyncHandler = require('../middleware/asyncHandler');
-const { Inquiry, Apartment, Building, Reservation } = require('../../models');
+const { Inquiry, Apartment, Building, Reservation, User } = require('../../models');
 
 // -------------------- INQUIRIES --------------------
 router.get(
@@ -327,6 +327,11 @@ router.get(
             as: 'building',
             attributes: ['id', 'name']
           }
+        },
+        {
+          model: User,
+          as: 'createdBy',
+          attributes: ['id', 'fullName', 'email']
         }
       ],
       order: [['createdAt', 'DESC']]
@@ -341,9 +346,8 @@ router.post(
   auth,
   requireRole('ADMIN'),
   asyncHandler(async (req, res) => {
-    const { apartmentId, startDate, endDate, status } = req.body;
+    const { apartmentId, customerName, customerEmail, customerPhone, agreedPrice } = req.body;
 
-    // apartmentId je NOT NULL u bazi
     if (!apartmentId) {
       return res.status(400).json({ message: 'apartmentId je obavezan' });
     }
@@ -353,32 +357,27 @@ router.post(
       return res.status(400).json({ message: 'Stan ne postoji' });
     }
 
-    // status je nullable, ali ako je poslat i nije null -> validiraj
-    if (status !== undefined && status !== null) {
-      const allowedReservationStatuses = ['active', 'canceled', 'expired'];
-      if (!allowedReservationStatuses.includes(status)) {
-        return res.status(400).json({ message: 'Neispravan status rezervacije' });
+    if (agreedPrice !== undefined && agreedPrice !== null) {
+      if (typeof agreedPrice !== 'number' || agreedPrice <= 0) {
+        return res.status(400).json({ message: 'agreedPrice mora biti pozitivan broj' });
       }
     }
 
-    // zabrana vise aktivnih rezervacija za isti stan (samo ako se eksplicitno pravi active)
-    if (status === 'active') {
-      const existingActive = await Reservation.findOne({
-        where: { apartmentId, status: 'active' }
-      });
-
-      if (existingActive) {
-        return res.status(409).json({
-          message: 'Vec postoji aktivna rezervacija za ovaj stan'
-        });
-      }
+    const existingActive = await Reservation.findOne({
+      where: { apartmentId, status: 'ACTIVE' }
+    });
+    if (existingActive) {
+      return res.status(409).json({ message: 'Već postoji aktivna rezervacija za ovaj stan' });
     }
 
     const reservation = await Reservation.create({
       apartmentId,
-      startDate: startDate ?? null,
-      endDate: endDate ?? null,
-      status: status ?? null
+      createdByUserId: req.user.id,
+      customerName: customerName ?? null,
+      customerEmail: customerEmail ?? null,
+      customerPhone: customerPhone ?? null,
+      agreedPrice: agreedPrice ?? null,
+      status: 'ACTIVE'
     });
 
     res.status(201).json(reservation);
